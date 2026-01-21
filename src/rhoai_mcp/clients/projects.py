@@ -102,9 +102,11 @@ class ProjectClient:
         self.get_project(name)
 
         labels = RHOAILabels.model_serving_labels(single_model=not enable_modelmesh)
-        namespace = self._k8s.patch_namespace(name, labels=labels)
+        # Use OpenShift Projects API which regular users can modify,
+        # unlike the Namespace API which requires cluster-admin permissions
+        project = self._k8s.patch_project(name, labels=labels)
 
-        return DataScienceProject.from_namespace(namespace)
+        return DataScienceProject.from_project(project)
 
     def update_project(
         self,
@@ -123,8 +125,10 @@ class ProjectClient:
             annotations[RHOAIAnnotations.DASHBOARD_DESCRIPTION] = description
 
         if annotations:
-            namespace = self._k8s.patch_namespace(name, annotations=annotations)
-            return DataScienceProject.from_namespace(namespace)
+            # Use OpenShift Projects API which regular users can modify,
+            # unlike the Namespace API which requires cluster-admin permissions
+            project = self._k8s.patch_project(name, annotations=annotations)
+            return DataScienceProject.from_project(project)
 
         return self.get_project(name)
 

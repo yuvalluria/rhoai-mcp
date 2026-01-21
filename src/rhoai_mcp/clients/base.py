@@ -349,6 +349,26 @@ class K8sClient:
         """
         return self.list(CRDs.PROJECT, label_selector=label_selector)
 
+    def patch_project(
+        self,
+        name: str,
+        labels: dict[str, str] | None = None,
+        annotations: dict[str, str] | None = None,
+    ) -> ResourceInstance:
+        """Patch OpenShift Project labels and/or annotations.
+
+        Uses the OpenShift Projects API (project.openshift.io/v1) which
+        regular users have permission to modify, unlike the Kubernetes
+        Namespace API which typically requires cluster-admin permissions.
+        """
+        body: dict[str, Any] = {"metadata": {}}
+        if labels is not None:
+            body["metadata"]["labels"] = labels
+        if annotations is not None:
+            body["metadata"]["annotations"] = annotations
+
+        return self.patch(CRDs.PROJECT, name, body)
+
     # Namespace operations (used for Data Science Projects)
     def get_namespace(self, name: str) -> Any:
         """Get a namespace."""
