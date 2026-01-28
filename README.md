@@ -210,6 +210,57 @@ Or with an installed package:
 }
 ```
 
+### Using Container Image (Podman/Docker)
+
+First, build the container image:
+
+```bash
+make build
+```
+
+Then configure Claude Desktop with the container:
+
+**Podman:**
+
+```json
+{
+  "mcpServers": {
+    "rhoai": {
+      "command": "podman",
+      "args": [
+        "run", "-i", "--rm",
+        "--userns=keep-id",
+        "-v", "${HOME}/.kube/config:/opt/app-root/src/kubeconfig/config:ro",
+        "-e", "RHOAI_MCP_AUTH_MODE=kubeconfig",
+        "-e", "RHOAI_MCP_KUBECONFIG_PATH=/opt/app-root/src/kubeconfig/config",
+        "rhoai-mcp:latest"
+      ]
+    }
+  }
+}
+```
+
+**Docker:**
+
+```json
+{
+  "mcpServers": {
+    "rhoai": {
+      "command": "docker",
+      "args": [
+        "run", "-i", "--rm",
+        "-v", "${HOME}/.kube/config:/opt/app-root/src/kubeconfig/config:ro",
+        "-e", "RHOAI_MCP_AUTH_MODE=kubeconfig",
+        "-e", "RHOAI_MCP_KUBECONFIG_PATH=/opt/app-root/src/kubeconfig/config",
+        "rhoai-mcp:latest"
+      ]
+    }
+  }
+}
+```
+
+Note: The container uses `stdio` transport by default, which is required for Claude Desktop integration.
+
 ## Available Tools
 
 ### Project Management (6 tools)
