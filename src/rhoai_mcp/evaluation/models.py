@@ -103,12 +103,8 @@ class ExpectedToolSequence(BaseModel):
     followed an optimal path to the goal.
     """
 
-    required_tools: list[str] = Field(
-        default_factory=list, description="Tools that MUST be called"
-    )
-    optional_tools: list[str] = Field(
-        default_factory=list, description="Tools that MAY be called"
-    )
+    required_tools: list[str] = Field(default_factory=list, description="Tools that MUST be called")
+    optional_tools: list[str] = Field(default_factory=list, description="Tools that MAY be called")
     forbidden_tools: list[str] = Field(
         default_factory=list, description="Tools that should NOT be called"
     )
@@ -238,9 +234,7 @@ class EvaluationReport(BaseModel):
     # Metrics summaries (populated after metrics calculation)
     stability_score: float | None = Field(None, description="Stability dimension score")
     performance_score: float | None = Field(None, description="Performance dimension score")
-    tool_selection_score: float | None = Field(
-        None, description="Tool selection dimension score"
-    )
+    tool_selection_score: float | None = Field(None, description="Tool selection dimension score")
     parameter_precision_score: float | None = Field(
         None, description="Parameter precision dimension score"
     )

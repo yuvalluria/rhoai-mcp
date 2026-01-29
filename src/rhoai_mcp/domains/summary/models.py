@@ -25,9 +25,7 @@ class ProjectSummary(BaseModel):
     name: str = Field(..., description="Project name")
     display_name: str | None = Field(None, description="Human-readable display name")
     status: str = Field(..., description="Project status")
-    workbenches: str | None = Field(
-        None, description="Workbench status (e.g. '2/3 running')"
-    )
+    workbenches: str | None = Field(None, description="Workbench status (e.g. '2/3 running')")
     models: str | None = Field(None, description="Model status (e.g. '1/2 ready')")
     pipelines: int | None = Field(None, description="Number of pipelines")
     storage: int | None = Field(None, description="Number of storage volumes")

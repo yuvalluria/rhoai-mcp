@@ -140,9 +140,7 @@ class ToolSelectionMetrics(BaseModel):
     tools, and order compliance.
     """
 
-    required_tools_called: int = Field(
-        ..., description="Number of required tools that were called"
-    )
+    required_tools_called: int = Field(..., description="Number of required tools that were called")
     required_tools_total: int = Field(..., description="Total number of required tools")
     required_coverage: float = Field(
         ..., description="Percentage of required tools called (0.0-1.0)"
@@ -212,12 +210,8 @@ class SuccessErrorMetrics(BaseModel):
     error_categories: dict[str, int] = Field(
         default_factory=dict, description="Distribution of error categories"
     )
-    retry_attempts: int = Field(
-        0, description="Number of retries (same tool called after failure)"
-    )
-    retry_success_rate: float = Field(
-        0.0, description="Percentage of successful retries (0.0-1.0)"
-    )
+    retry_attempts: int = Field(0, description="Number of retries (same tool called after failure)")
+    retry_success_rate: float = Field(0.0, description="Percentage of successful retries (0.0-1.0)")
 
     @classmethod
     def from_tool_calls(cls, calls: list[ToolCall]) -> SuccessErrorMetrics:
@@ -263,12 +257,8 @@ class ParameterPrecisionMetrics(BaseModel):
     """
 
     total_parameters: int = Field(..., description="Total number of parameters validated")
-    valid_parameters: int = Field(
-        ..., description="Number of parameters that passed validation"
-    )
-    precision_score: float = Field(
-        ..., description="Percentage of valid parameters (0.0-1.0)"
-    )
+    valid_parameters: int = Field(..., description="Number of parameters that passed validation")
+    precision_score: float = Field(..., description="Percentage of valid parameters (0.0-1.0)")
     type_errors: list[dict[str, Any]] = Field(
         default_factory=list, description="Parameters with wrong types"
     )
@@ -347,9 +337,7 @@ class TrajectoryMetrics(BaseModel):
     )
     checkpoints_hit: int = Field(0, description="Number of required checkpoints reached")
     checkpoints_total: int = Field(0, description="Total number of required checkpoints")
-    checkpoint_coverage: float = Field(
-        1.0, description="Percentage of checkpoints hit (0.0-1.0)"
-    )
+    checkpoint_coverage: float = Field(1.0, description="Percentage of checkpoints hit (0.0-1.0)")
     unnecessary_steps: list[str] = Field(
         default_factory=list, description="Steps not in any acceptable trajectory"
     )

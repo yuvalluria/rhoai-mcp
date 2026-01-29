@@ -33,9 +33,7 @@ class CompositeEvaluationScore(BaseModel):
     performance_score: float = Field(..., description="Performance dimension score")
     tool_selection_score: float = Field(..., description="Tool selection dimension score")
     success_rate_score: float = Field(..., description="Success rate dimension score")
-    parameter_precision_score: float = Field(
-        ..., description="Parameter precision dimension score"
-    )
+    parameter_precision_score: float = Field(..., description="Parameter precision dimension score")
     trajectory_score: float = Field(..., description="Trajectory dimension score")
 
     # Weighted composite
@@ -65,9 +63,7 @@ class CompositeEvaluationScore(BaseModel):
     )
 
     # Weights used
-    weights: dict[str, float] = Field(
-        default_factory=dict, description="Weights used for scoring"
-    )
+    weights: dict[str, float] = Field(default_factory=dict, description="Weights used for scoring")
 
     def model_dump(self, **kwargs: Any) -> dict[str, Any]:
         """Override model_dump to provide structured output format."""
@@ -98,9 +94,7 @@ class CompositeEvaluationScore(BaseModel):
                     else None
                 ),
                 "success_error": (
-                    self.success_error_metrics.model_dump()
-                    if self.success_error_metrics
-                    else None
+                    self.success_error_metrics.model_dump() if self.success_error_metrics else None
                 ),
                 "parameter_precision": (
                     self.parameter_precision_metrics.model_dump()
