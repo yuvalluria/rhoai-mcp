@@ -58,6 +58,29 @@ def _create_cached_catalog_discovery(url: str) -> DiscoveredModelRegistry:
     )
 
 
+def _create_cached_registry_discovery(url: str) -> DiscoveredModelRegistry:
+    """Create a cached discovery result for standard Model Registry API.
+
+    Used when we already know the API type from probing and need to
+    create a discovery result for the ModelRegistryClient.
+
+    Args:
+        url: The discovered Model Registry URL.
+
+    Returns:
+        A DiscoveredModelRegistry configured for standard Model Registry.
+    """
+    return DiscoveredModelRegistry(
+        url=url,
+        namespace="unknown",
+        service_name="model-registry",
+        port=443,
+        source="cached",
+        requires_auth=False,  # Port-forward bypasses auth
+        api_type="model_registry",
+    )
+
+
 def register_tools(mcp: FastMCP, server: "RHOAIServer") -> None:
     """Register Model Registry tools with the MCP server."""
 
@@ -147,7 +170,8 @@ def register_tools(mcp: FastMCP, server: "RHOAIServer") -> None:
                     ]
             else:
                 # Use standard Model Registry client
-                async with ModelRegistryClient(server.config) as registry_client:
+                discovery_result = _create_cached_registry_discovery(url)
+                async with ModelRegistryClient(server.config, discovery_result) as registry_client:
                     registry_models = await registry_client.list_registered_models()
                     all_items = [
                         _format_model(m, Verbosity.from_str(verbosity)) for m in registry_models
@@ -190,7 +214,9 @@ def register_tools(mcp: FastMCP, server: "RHOAIServer") -> None:
             return {"error": "Model Registry is disabled"}
 
         try:
-            async with ModelRegistryClient(server.config) as client:
+            _, url = await _get_api_type()
+            discovery_result = _create_cached_registry_discovery(url)
+            async with ModelRegistryClient(server.config, discovery_result) as client:
                 model = await client.get_registered_model(model_id)
                 result = _format_model(model, Verbosity.FULL)
 
@@ -231,7 +257,9 @@ def register_tools(mcp: FastMCP, server: "RHOAIServer") -> None:
             return {"error": "Model Registry is disabled"}
 
         try:
-            async with ModelRegistryClient(server.config) as client:
+            _, url = await _get_api_type()
+            discovery_result = _create_cached_registry_discovery(url)
+            async with ModelRegistryClient(server.config, discovery_result) as client:
                 versions = await client.get_model_versions(model_id)
                 all_items = [_format_version(v, Verbosity.from_str(verbosity)) for v in versions]
         except ModelRegistryConnectionError as e:
@@ -265,7 +293,9 @@ def register_tools(mcp: FastMCP, server: "RHOAIServer") -> None:
             return {"error": "Model Registry is disabled"}
 
         try:
-            async with ModelRegistryClient(server.config) as client:
+            _, url = await _get_api_type()
+            discovery_result = _create_cached_registry_discovery(url)
+            async with ModelRegistryClient(server.config, discovery_result) as client:
                 version = await client.get_model_version(version_id)
                 return _format_version(version, Verbosity.FULL)
         except ModelNotFoundError:
@@ -296,7 +326,9 @@ def register_tools(mcp: FastMCP, server: "RHOAIServer") -> None:
             return {"error": "Model Registry is disabled"}
 
         try:
-            async with ModelRegistryClient(server.config) as client:
+            _, url = await _get_api_type()
+            discovery_result = _create_cached_registry_discovery(url)
+            async with ModelRegistryClient(server.config, discovery_result) as client:
                 artifacts = await client.get_model_artifacts(version_id)
                 formatted_artifacts = [
                     _format_artifact(a, Verbosity.from_str(verbosity)) for a in artifacts
@@ -336,7 +368,9 @@ def register_tools(mcp: FastMCP, server: "RHOAIServer") -> None:
             return {"error": "Model Registry is disabled"}
 
         try:
-            async with ModelRegistryClient(server.config) as client:
+            _, url = await _get_api_type()
+            discovery_result = _create_cached_registry_discovery(url)
+            async with ModelRegistryClient(server.config, discovery_result) as client:
                 extractor = BenchmarkExtractor(client)
                 benchmark = await extractor.get_benchmark_for_model(
                     model_name=model_name,
@@ -376,7 +410,9 @@ def register_tools(mcp: FastMCP, server: "RHOAIServer") -> None:
             return {"error": "Model Registry is disabled"}
 
         try:
-            async with ModelRegistryClient(server.config) as client:
+            _, url = await _get_api_type()
+            discovery_result = _create_cached_registry_discovery(url)
+            async with ModelRegistryClient(server.config, discovery_result) as client:
                 # Find the model
                 model = await client.get_registered_model_by_name(model_name)
                 if not model:
@@ -421,7 +457,9 @@ def register_tools(mcp: FastMCP, server: "RHOAIServer") -> None:
             return {"error": "Model Registry is disabled"}
 
         try:
-            async with ModelRegistryClient(server.config) as client:
+            _, url = await _get_api_type()
+            discovery_result = _create_cached_registry_discovery(url)
+            async with ModelRegistryClient(server.config, discovery_result) as client:
                 extractor = BenchmarkExtractor(client)
                 benchmarks = await extractor.find_benchmarks_by_gpu(gpu_type)
                 formatted_benchmarks = [_format_benchmark(b) for b in benchmarks]

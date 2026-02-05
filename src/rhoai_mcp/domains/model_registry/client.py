@@ -27,6 +27,7 @@ from rhoai_mcp.domains.model_registry.models import (
 
 if TYPE_CHECKING:
     from rhoai_mcp.config import RHOAIConfig
+    from rhoai_mcp.domains.model_registry.discovery import DiscoveredModelRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -106,22 +107,35 @@ class ModelRegistryClient:
             models = await client.list_registered_models()
     """
 
-    def __init__(self, config: RHOAIConfig) -> None:
+    def __init__(
+        self,
+        config: RHOAIConfig,
+        discovery_result: DiscoveredModelRegistry | None = None,
+    ) -> None:
         """Initialize client.
 
         Args:
             config: RHOAI configuration with Model Registry settings.
+            discovery_result: Optional discovery result with URL and auth info.
         """
         self._config = config
+        self._discovery = discovery_result
         self._http_client: httpx.AsyncClient | None = None
 
+    def _get_base_url(self) -> str:
+        """Get the base URL for API calls."""
+        if self._discovery:
+            return self._discovery.url
+        return self._config.model_registry_url
+
     def _get_auth_headers(self) -> dict[str, str]:
-        """Get authentication headers based on config.
+        """Get authentication headers based on config and discovery.
 
         Returns:
             Dict of headers to include in requests.
         """
-        return build_auth_headers(self._config)
+        requires_auth_override = self._discovery.requires_auth if self._discovery else False
+        return build_auth_headers(self._config, requires_auth_override=requires_auth_override)
 
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create HTTP client with appropriate auth and SSL settings."""
@@ -139,7 +153,7 @@ class ModelRegistryClient:
                 )
 
             self._http_client = httpx.AsyncClient(
-                base_url=self._config.model_registry_url,
+                base_url=self._get_base_url(),
                 timeout=self._config.model_registry_timeout,
                 headers=headers,
                 verify=verify,
@@ -230,11 +244,11 @@ class ModelRegistryClient:
 
         except httpx.ConnectError as e:
             raise ModelRegistryConnectionError(
-                _format_connection_error(self._config.model_registry_url, e)
+                _format_connection_error(self._get_base_url(), e)
             ) from e
         except httpx.TimeoutException as e:
             raise ModelRegistryConnectionError(
-                f"Timeout connecting to Model Registry at {self._config.model_registry_url}: {e}"
+                f"Timeout connecting to Model Registry at {self._get_base_url()}: {e}"
             ) from e
         except httpx.HTTPStatusError as e:
             raise ModelRegistryError(f"Failed to list models: {e}") from e
@@ -265,11 +279,11 @@ class ModelRegistryClient:
 
         except httpx.ConnectError as e:
             raise ModelRegistryConnectionError(
-                _format_connection_error(self._config.model_registry_url, e)
+                _format_connection_error(self._get_base_url(), e)
             ) from e
         except httpx.TimeoutException as e:
             raise ModelRegistryConnectionError(
-                f"Timeout connecting to Model Registry at {self._config.model_registry_url}: {e}"
+                f"Timeout connecting to Model Registry at {self._get_base_url()}: {e}"
             ) from e
         except httpx.HTTPStatusError as e:
             raise ModelRegistryError(f"Failed to get model: {e}") from e
@@ -372,11 +386,11 @@ class ModelRegistryClient:
 
         except httpx.ConnectError as e:
             raise ModelRegistryConnectionError(
-                _format_connection_error(self._config.model_registry_url, e)
+                _format_connection_error(self._get_base_url(), e)
             ) from e
         except httpx.TimeoutException as e:
             raise ModelRegistryConnectionError(
-                f"Timeout connecting to Model Registry at {self._config.model_registry_url}: {e}"
+                f"Timeout connecting to Model Registry at {self._get_base_url()}: {e}"
             ) from e
         except httpx.HTTPStatusError as e:
             raise ModelRegistryError(f"Failed to get model versions: {e}") from e
@@ -405,11 +419,11 @@ class ModelRegistryClient:
 
         except httpx.ConnectError as e:
             raise ModelRegistryConnectionError(
-                _format_connection_error(self._config.model_registry_url, e)
+                _format_connection_error(self._get_base_url(), e)
             ) from e
         except httpx.TimeoutException as e:
             raise ModelRegistryConnectionError(
-                f"Timeout connecting to Model Registry at {self._config.model_registry_url}: {e}"
+                f"Timeout connecting to Model Registry at {self._get_base_url()}: {e}"
             ) from e
         except httpx.HTTPStatusError as e:
             raise ModelRegistryError(f"Failed to get model version: {e}") from e
@@ -442,11 +456,11 @@ class ModelRegistryClient:
 
         except httpx.ConnectError as e:
             raise ModelRegistryConnectionError(
-                _format_connection_error(self._config.model_registry_url, e)
+                _format_connection_error(self._get_base_url(), e)
             ) from e
         except httpx.TimeoutException as e:
             raise ModelRegistryConnectionError(
-                f"Timeout connecting to Model Registry at {self._config.model_registry_url}: {e}"
+                f"Timeout connecting to Model Registry at {self._get_base_url()}: {e}"
             ) from e
         except httpx.HTTPStatusError as e:
             raise ModelRegistryError(f"Failed to get artifacts: {e}") from e
