@@ -211,20 +211,98 @@ def register_tools(mcp: FastMCP, server: "RHOAIServer") -> None:
         }
 
     @mcp.tool()
-    def list_serving_runtimes(namespace: str) -> list[dict[str, Any]]:
+    def list_serving_runtimes(
+        namespace: str,
+        include_templates: bool = True,
+    ) -> dict[str, Any]:
         """List available model serving runtimes.
 
         Serving runtimes define the model server that will be used to serve
         predictions (e.g., OpenVINO, vLLM, TGIS, etc.).
 
+        This includes both:
+        - Existing ServingRuntimes in the namespace
+        - Available templates from the platform that can be instantiated
+
         Args:
             namespace: The project (namespace) name.
+            include_templates: Include available runtime templates from the
+                platform namespace (default: True).
 
         Returns:
             List of available serving runtimes with supported model formats.
+            Runtimes from templates will have 'requires_instantiation: true'.
         """
         client = InferenceClient(server.k8s)
-        return client.list_serving_runtimes(namespace)
+        runtimes = client.list_serving_runtimes(namespace, include_templates)
+
+        # Separate existing and template-based runtimes for clarity
+        existing = [r for r in runtimes if r.get("source") == "namespace"]
+        from_templates = [r for r in runtimes if r.get("source") == "template"]
+
+        return {
+            "result": runtimes,
+            "existing_count": len(existing),
+            "template_count": len(from_templates),
+            "note": (
+                "Runtimes with 'requires_instantiation: true' must be created "
+                "using create_serving_runtime before use."
+                if from_templates
+                else None
+            ),
+        }
+
+    @mcp.tool()
+    def create_serving_runtime(
+        namespace: str,
+        template_name: str,
+    ) -> dict[str, Any]:
+        """Create a serving runtime from a platform template.
+
+        Instantiates a serving runtime template (e.g., vLLM, TGIS) from the
+        platform namespace into the target project namespace.
+
+        Use list_serving_runtimes to see available templates
+        (those with 'requires_instantiation: true').
+
+        Args:
+            namespace: The project (namespace) where the runtime will be created.
+            template_name: Name of the template to instantiate
+                (e.g., 'vllm-cuda-runtime-template').
+
+        Returns:
+            Information about the created ServingRuntime.
+        """
+        # Check if operation is allowed
+        allowed, reason = server.config.is_operation_allowed("create")
+        if not allowed:
+            return {"error": reason}
+
+        client = InferenceClient(server.k8s)
+        try:
+            result = client.instantiate_serving_runtime_template(
+                template_name=template_name,
+                target_namespace=namespace,
+            )
+            return {
+                "success": True,
+                "runtime_name": result["runtime"]["name"],
+                "display_name": result["runtime"]["display_name"],
+                "supported_formats": result["runtime"]["supported_formats"],
+                "namespace": namespace,
+                "message": (
+                    f"ServingRuntime '{result['runtime']['name']}' created from "
+                    f"template '{template_name}'. You can now use this runtime "
+                    "to deploy models."
+                ),
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "template_name": template_name,
+                "namespace": namespace,
+            }
 
     @mcp.tool()
     def get_model_endpoint(name: str, namespace: str) -> dict[str, Any]:
@@ -289,16 +367,19 @@ def register_tools(mcp: FastMCP, server: "RHOAIServer") -> None:
         else:
             model_format = model_info.get("format", "pytorch")
 
-        # Step 2: Get available runtimes
+        # Step 2: Get available runtimes (including templates)
         client = InferenceClient(server.k8s)
-        runtimes = client.list_serving_runtimes(namespace)
+        runtimes = client.list_serving_runtimes(namespace, include_templates=True)
 
         if not runtimes:
-            issues.append("No serving runtimes available in namespace")
+            issues.append("No serving runtimes available in namespace or platform")
 
         # Step 3: Find compatible runtime
         recommended_runtime = None
+        recommended_runtime_info: dict[str, Any] | None = None
         compatible_runtimes: list[str] = []
+        requires_instantiation = False
+        template_to_instantiate: str | None = None
 
         for runtime in runtimes:
             supported = runtime.get("supported_formats", [])
@@ -307,14 +388,28 @@ def register_tools(mcp: FastMCP, server: "RHOAIServer") -> None:
                 compatible_runtimes.append(runtime["name"])
                 if recommended_runtime is None:
                     recommended_runtime = runtime["name"]
+                    recommended_runtime_info = runtime
             # Check for LLM-specific runtimes (only if they also support the format)
-            is_llm_runtime = "vllm" in runtime["name"].lower() or "tgis" in runtime["name"].lower()
+            is_llm_runtime = (
+                "vllm" in runtime["name"].lower() or "tgis" in runtime["name"].lower()
+            )
             if (
                 is_llm_runtime
                 and model_info.get("is_llm")
                 and runtime["name"] in compatible_runtimes
             ):
                 recommended_runtime = runtime["name"]
+                recommended_runtime_info = runtime
+
+        # Check if the recommended runtime needs to be instantiated from a template
+        if recommended_runtime_info and recommended_runtime_info.get("requires_instantiation"):
+            requires_instantiation = True
+            template_to_instantiate = recommended_runtime_info.get("template_name")
+            warnings.append(
+                f"Runtime '{recommended_runtime}' must be created first using "
+                f"create_serving_runtime(namespace='{namespace}', "
+                f"template_name='{template_to_instantiate}')"
+            )
 
         if not compatible_runtimes:
             issues.append(f"No runtime supports format '{model_format}'")
@@ -380,7 +475,21 @@ def register_tools(mcp: FastMCP, server: "RHOAIServer") -> None:
             "memory_limit": resource_requirements.get("memory_limit", "8Gi"),
         }
 
-        ready = len(issues) == 0 and recommended_runtime is not None and storage_uri is not None
+        # Determine readiness - if runtime needs instantiation, that's the next step
+        ready = (
+            len(issues) == 0
+            and recommended_runtime is not None
+            and storage_uri is not None
+            and not requires_instantiation
+        )
+
+        # Determine next action
+        if requires_instantiation:
+            next_action = "create_serving_runtime"
+        elif ready:
+            next_action = "deploy_model"
+        else:
+            next_action = "fix_issues"
 
         return {
             "ready": ready,
@@ -391,7 +500,9 @@ def register_tools(mcp: FastMCP, server: "RHOAIServer") -> None:
             "compatible_runtimes": compatible_runtimes,
             "resource_requirements": resource_requirements,
             "storage_valid": storage_valid,
-            "next_action": "deploy_model" if ready else "fix_issues",
+            "requires_runtime_creation": requires_instantiation,
+            "template_to_instantiate": template_to_instantiate,
+            "next_action": next_action,
             "suggested_deploy_params": suggested_params,
         }
 
