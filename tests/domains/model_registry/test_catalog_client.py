@@ -423,10 +423,10 @@ class TestModelCatalogClientAuth:
         client = ModelCatalogClient(mock_config_no_auth, mock_discovery_with_auth)
 
         with patch(
-            "rhoai_mcp.domains.model_registry.catalog_client._is_running_in_cluster",
+            "rhoai_mcp.domains.model_registry.auth._is_running_in_cluster",
             return_value=False,
         ), patch(
-            "rhoai_mcp.domains.model_registry.catalog_client._get_oauth_token_from_kubeconfig",
+            "rhoai_mcp.domains.model_registry.auth._get_oauth_token_from_kubeconfig",
             return_value="sha256~oauth-token",
         ):
             headers = client._get_auth_headers()

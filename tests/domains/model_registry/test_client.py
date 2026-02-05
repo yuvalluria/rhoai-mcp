@@ -5,15 +5,16 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from rhoai_mcp.config import RHOAIConfig
-from rhoai_mcp.config import ModelRegistryAuthMode
+from rhoai_mcp.config import ModelRegistryAuthMode, RHOAIConfig
+from rhoai_mcp.domains.model_registry.auth import (
+    _get_in_cluster_token,
+    _get_oauth_token_from_kubeconfig,
+    _is_running_in_cluster,
+)
 from rhoai_mcp.domains.model_registry.client import (
     ModelRegistryClient,
     _format_connection_error,
-    _get_in_cluster_token,
-    _get_oauth_token_from_kubeconfig,
     _is_internal_k8s_url,
-    _is_running_in_cluster,
 )
 from rhoai_mcp.domains.model_registry.errors import (
     ModelNotFoundError,
@@ -427,7 +428,7 @@ class TestGetInClusterToken:
         token_file.write_text("my-service-account-token")
 
         with patch(
-            "rhoai_mcp.domains.model_registry.client.Path"
+            "rhoai_mcp.domains.model_registry.auth.Path"
         ) as mock_path:
             mock_path.return_value.exists.return_value = True
             mock_path.return_value.read_text.return_value = "my-service-account-token\n"
@@ -438,7 +439,7 @@ class TestGetInClusterToken:
     def test_token_file_missing(self) -> None:
         """When token file doesn't exist, return None."""
         with patch(
-            "rhoai_mcp.domains.model_registry.client.Path"
+            "rhoai_mcp.domains.model_registry.auth.Path"
         ) as mock_path:
             mock_path.return_value.exists.return_value = False
             token = _get_in_cluster_token()
@@ -548,10 +549,10 @@ class TestModelRegistryClientAuth:
         client = ModelRegistryClient(mock_config_oauth)
 
         with patch(
-            "rhoai_mcp.domains.model_registry.client._is_running_in_cluster",
+            "rhoai_mcp.domains.model_registry.auth._is_running_in_cluster",
             return_value=False,
         ), patch(
-            "rhoai_mcp.domains.model_registry.client._get_oauth_token_from_kubeconfig",
+            "rhoai_mcp.domains.model_registry.auth._get_oauth_token_from_kubeconfig",
             return_value="sha256~kubeconfig-token",
         ):
             headers = client._get_auth_headers()
@@ -563,10 +564,10 @@ class TestModelRegistryClientAuth:
         client = ModelRegistryClient(mock_config_oauth)
 
         with patch(
-            "rhoai_mcp.domains.model_registry.client._is_running_in_cluster",
+            "rhoai_mcp.domains.model_registry.auth._is_running_in_cluster",
             return_value=True,
         ), patch(
-            "rhoai_mcp.domains.model_registry.client._get_in_cluster_token",
+            "rhoai_mcp.domains.model_registry.auth._get_in_cluster_token",
             return_value="sa-token-123",
         ):
             headers = client._get_auth_headers()
@@ -578,10 +579,10 @@ class TestModelRegistryClientAuth:
         client = ModelRegistryClient(mock_config_oauth)
 
         with patch(
-            "rhoai_mcp.domains.model_registry.client._is_running_in_cluster",
+            "rhoai_mcp.domains.model_registry.auth._is_running_in_cluster",
             return_value=False,
         ), patch(
-            "rhoai_mcp.domains.model_registry.client._get_oauth_token_from_kubeconfig",
+            "rhoai_mcp.domains.model_registry.auth._get_oauth_token_from_kubeconfig",
             return_value=None,
         ):
             headers = client._get_auth_headers()

@@ -10,6 +10,7 @@ from rhoai_mcp.domains.model_registry.catalog_client import ModelCatalogClient
 from rhoai_mcp.domains.model_registry.catalog_models import CatalogModel, CatalogSource
 from rhoai_mcp.domains.model_registry.client import ModelRegistryClient
 from rhoai_mcp.domains.model_registry.discovery import (
+    DiscoveredModelRegistry,
     ModelRegistryDiscovery,
     probe_api_type,
 )
@@ -32,6 +33,29 @@ logger = logging.getLogger(__name__)
 # Cache for discovered API type to avoid probing on every call
 _cached_api_type: str | None = None
 _cached_discovery_url: str | None = None
+
+
+def _create_cached_catalog_discovery(url: str) -> DiscoveredModelRegistry:
+    """Create a cached discovery result for Model Catalog API.
+
+    Used when we already know the API type from probing and need to
+    create a discovery result for the ModelCatalogClient.
+
+    Args:
+        url: The discovered Model Catalog URL.
+
+    Returns:
+        A DiscoveredModelRegistry configured for Model Catalog.
+    """
+    return DiscoveredModelRegistry(
+        url=url,
+        namespace="unknown",
+        service_name="model-catalog",
+        port=443,
+        source="cached",
+        requires_auth=True,
+        api_type="model_catalog",
+    )
 
 
 def register_tools(mcp: FastMCP, server: "RHOAIServer") -> None:
@@ -113,18 +137,7 @@ def register_tools(mcp: FastMCP, server: "RHOAIServer") -> None:
 
             if api_type == "model_catalog":
                 # Use Model Catalog client
-                from rhoai_mcp.domains.model_registry.discovery import DiscoveredModelRegistry
-
-                # Create a minimal discovery result for the catalog client
-                discovery_result = DiscoveredModelRegistry(
-                    url=url,
-                    namespace="unknown",
-                    service_name="model-catalog",
-                    port=443,
-                    source="cached",
-                    requires_auth=True,
-                    api_type="model_catalog",
-                )
+                discovery_result = _create_cached_catalog_discovery(url)
                 async with ModelCatalogClient(server.config, discovery_result) as catalog_client:
                     catalog_models = await catalog_client.list_models(source_label=source_label)
                     all_items = [
@@ -447,17 +460,7 @@ def register_tools(mcp: FastMCP, server: "RHOAIServer") -> None:
                     f"The cluster appears to have a standard Model Registry (api_type={api_type})."
                 }
 
-            from rhoai_mcp.domains.model_registry.discovery import DiscoveredModelRegistry
-
-            discovery_result = DiscoveredModelRegistry(
-                url=url,
-                namespace="unknown",
-                service_name="model-catalog",
-                port=443,
-                source="cached",
-                requires_auth=True,
-                api_type="model_catalog",
-            )
+            discovery_result = _create_cached_catalog_discovery(url)
             async with ModelCatalogClient(server.config, discovery_result) as client:
                 sources = await client.get_sources()
                 formatted_sources = [_format_catalog_source(s) for s in sources]
@@ -504,17 +507,7 @@ def register_tools(mcp: FastMCP, server: "RHOAIServer") -> None:
                     f"The cluster appears to have a standard Model Registry (api_type={api_type})."
                 }
 
-            from rhoai_mcp.domains.model_registry.discovery import DiscoveredModelRegistry
-
-            discovery_result = DiscoveredModelRegistry(
-                url=url,
-                namespace="unknown",
-                service_name="model-catalog",
-                port=443,
-                source="cached",
-                requires_auth=True,
-                api_type="model_catalog",
-            )
+            discovery_result = _create_cached_catalog_discovery(url)
             async with ModelCatalogClient(server.config, discovery_result) as client:
                 artifacts = await client.get_model_artifacts(source, model_name)
                 formatted_artifacts = [_format_catalog_artifact(a) for a in artifacts]

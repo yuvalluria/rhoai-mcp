@@ -18,10 +18,9 @@ from typing import TYPE_CHECKING, Any
 import httpx
 from kubernetes.client import ApiException  # type: ignore[import-untyped]
 
-from rhoai_mcp.domains.model_registry.client import (
-    _get_in_cluster_token,
-    _get_oauth_token_from_kubeconfig,
+from rhoai_mcp.domains.model_registry.auth import (
     _is_running_in_cluster,
+    build_auth_headers,
 )
 from rhoai_mcp.domains.model_registry.crds import ModelRegistryCRDs
 
@@ -360,22 +359,8 @@ async def probe_api_type(
         "model_registry" if standard Model Registry API is available,
         "unknown" if neither responds successfully.
     """
-    from rhoai_mcp.config import ModelRegistryAuthMode
-
-    # Build auth headers
-    headers: dict[str, str] = {}
-    if requires_auth or config.model_registry_auth_mode != ModelRegistryAuthMode.NONE:
-        token: str | None = None
-        if config.model_registry_auth_mode == ModelRegistryAuthMode.TOKEN:
-            token = config.model_registry_token
-        else:
-            # OAuth mode
-            if _is_running_in_cluster():
-                token = _get_in_cluster_token()
-            else:
-                token = _get_oauth_token_from_kubeconfig(config)
-        if token:
-            headers["Authorization"] = f"Bearer {token}"
+    # Build auth headers using shared utility
+    headers = build_auth_headers(config, requires_auth_override=requires_auth)
 
     # Configure SSL
     verify: bool | ssl.SSLContext = True

@@ -14,17 +14,13 @@ from urllib.parse import quote
 
 import httpx
 
+from rhoai_mcp.domains.model_registry.auth import build_auth_headers
 from rhoai_mcp.domains.model_registry.catalog_models import (
     CatalogModel,
     CatalogModelArtifact,
     CatalogSource,
 )
-from rhoai_mcp.domains.model_registry.client import (
-    _format_connection_error,
-    _get_in_cluster_token,
-    _get_oauth_token_from_kubeconfig,
-    _is_running_in_cluster,
-)
+from rhoai_mcp.domains.model_registry.client import _format_connection_error
 from rhoai_mcp.domains.model_registry.errors import (
     ModelNotFoundError,
     ModelRegistryConnectionError,
@@ -77,51 +73,8 @@ class ModelCatalogClient:
         Returns:
             Dict of headers to include in requests.
         """
-        from rhoai_mcp.config import ModelRegistryAuthMode
-
-        headers: dict[str, str] = {}
-
-        # Determine if auth is required
-        requires_auth = (
-            (self._discovery and self._discovery.requires_auth)
-            or self._config.model_registry_auth_mode != ModelRegistryAuthMode.NONE
-        )
-
-        if not requires_auth:
-            return headers
-
-        token: str | None = None
-        auth_mode = self._config.model_registry_auth_mode
-
-        if auth_mode == ModelRegistryAuthMode.TOKEN:
-            # Use explicit token from config
-            token = self._config.model_registry_token
-            if not token:
-                logger.warning(
-                    "Model Catalog auth requires token but none configured. "
-                    "Set RHOAI_MCP_MODEL_REGISTRY_TOKEN environment variable."
-                )
-
-        elif auth_mode == ModelRegistryAuthMode.OAUTH or (
-            self._discovery and self._discovery.requires_auth
-        ):
-            # Get OAuth token from kubeconfig or in-cluster SA
-            if _is_running_in_cluster():
-                token = _get_in_cluster_token()
-            else:
-                token = _get_oauth_token_from_kubeconfig(self._config)
-
-            if not token:
-                logger.warning(
-                    "Model Catalog requires OAuth but no token found. "
-                    "Ensure you are logged in (oc login) or running in-cluster."
-                )
-
-        if token:
-            headers["Authorization"] = f"Bearer {token}"
-            logger.debug("Added Authorization header for Model Catalog")
-
-        return headers
+        requires_auth_override = self._discovery.requires_auth if self._discovery else False
+        return build_auth_headers(self._config, requires_auth_override=requires_auth_override)
 
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create HTTP client with appropriate auth and SSL settings."""
