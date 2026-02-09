@@ -198,7 +198,7 @@ export RHOAI_MCP_MODEL_REGISTRY_URL=https://model-registry.example.com
 
 #### Authentication
 
-When accessing the Model Registry via an external route (outside the cluster), OAuth authentication is required:
+When accessing the Model Registry via an external route (outside the cluster), authentication is typically required (OAuth for OAuth-proxied routes; explicit token auth is also supported):
 
 ```bash
 # No authentication (default) - for in-cluster access

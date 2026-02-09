@@ -478,7 +478,7 @@ class TestCatalogBenchmarkExtractor:
     ) -> None:
         """Test extracting sections from empty/None input."""
         assert extractor.extract_benchmark_sections("") == []
-        assert extractor.extract_benchmark_sections(None) == []  # type: ignore[arg-type]
+        assert extractor.extract_benchmark_sections(None) == []
 
     def test_extract_sections_case_insensitive(
         self, extractor: CatalogBenchmarkExtractor
