@@ -241,12 +241,12 @@ class TestPluginManager:
         pm = PluginManager()
         count = pm.load_core_plugins()
 
-        # Should load 9 core domain plugins + 3 composite plugins = 12 total
-        assert count == 12
-        assert len(pm.registered_plugins) == 12
+        # Should load 10 core domain plugins + 3 composite plugins = 13 total
+        assert count == 13
+        assert len(pm.registered_plugins) == 13
 
         # Verify expected plugins are loaded
-        # Core domain plugins (9)
+        # Core domain plugins (10)
         expected_domains = {
             "projects",
             "notebooks",
@@ -255,8 +255,9 @@ class TestPluginManager:
             "connections",
             "storage",
             "training",
-            "prompts",
-            "model_registry",
+            "summary",
+            "prompt_optimization",
+            "neuralnav",
         }
         # Composite plugins (3)
         expected_composites = {

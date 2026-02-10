@@ -157,20 +157,18 @@ class RHOAIConfig(BaseSettings):
         description="Enable evaluation harness for tracking agent performance",
     )
 
-    # Model Registry settings
-    model_registry_url: str = Field(
-        default="http://model-registry.odh-model-registries.svc:8080",
-        description="Model Registry service URL",
+    # Prompt optimization (Opik) service
+    opik_service_url: str | None = Field(
+        default=None,
+        description="Base URL of Opik-backed prompt optimization service (e.g. NeuralNav backend). "
+        "Set RHOAI_MCP_OPIK_SERVICE_URL for run_prompt_evaluation and run_prompt_optimization tools.",
     )
-    model_registry_timeout: int = Field(
-        default=30,
-        ge=1,
-        le=120,
-        description="Model Registry request timeout in seconds",
-    )
-    model_registry_enabled: bool = Field(
-        default=True,
-        description="Enable Model Registry integration",
+
+    # Optional: run without Kubernetes (NeuralNav/Opik tools only; RHOAI tools will fail at call time)
+    skip_k8s_connect: bool = Field(
+        default=False,
+        description="If true, do not connect to Kubernetes at startup. Use to run with only "
+        "NeuralNav/Opik tools when no kubeconfig is available. Set RHOAI_MCP_SKIP_K8S_CONNECT=true.",
     )
     model_registry_discovery_mode: ModelRegistryDiscoveryMode = Field(
         default=ModelRegistryDiscoveryMode.AUTO,

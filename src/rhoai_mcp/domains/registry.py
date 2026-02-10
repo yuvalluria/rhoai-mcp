@@ -211,124 +211,103 @@ class TrainingPlugin(BasePlugin):
         return TrainingCRDs.all_crds()
 
 
-class PromptsPlugin(BasePlugin):
-    """Plugin for MCP workflow prompts.
+class SummaryPlugin(BasePlugin):
+    """Plugin for context-efficient cluster and project summaries.
 
-    Provides prompts that guide AI agents through multi-step workflows
-    for training, exploration, troubleshooting, project setup, and
-    model deployment.
+    Provides lightweight tools optimized for AI agent context windows,
+    offering compact overviews that reduce token usage significantly.
     """
 
     def __init__(self) -> None:
         super().__init__(
             PluginMetadata(
-                name="prompts",
+                name="summary",
                 version="1.0.0",
-                description="MCP workflow prompts for RHOAI operations",
+                description="Context-efficient summary tools for AI agents",
                 maintainer="rhoai-mcp@redhat.com",
                 requires_crds=[],
             )
         )
 
     @hookimpl
-    def rhoai_register_prompts(self, mcp: FastMCP, server: RHOAIServer) -> None:
-        from rhoai_mcp.domains.prompts.prompts import register_prompts
+    def rhoai_register_tools(self, mcp: FastMCP, server: RHOAIServer) -> None:
+        from rhoai_mcp.domains.summary.tools import register_tools
 
-        register_prompts(mcp, server)
+        register_tools(mcp, server)
 
     @hookimpl
     def rhoai_health_check(self, server: RHOAIServer) -> tuple[bool, str]:  # noqa: ARG002
-        return True, "Prompts require no external dependencies"
+        return True, "Summary tools use core domain clients"
 
 
-class ModelRegistryPlugin(BasePlugin):
-    """Plugin for Model Registry integration.
+class PromptOptimizationPlugin(BasePlugin):
+    """Plugin for prompt optimization using Opik.
 
-    Provides tools to interact with the OpenShift AI Model Registry service
-    via its REST API. Unlike other domains that use Kubernetes CRDs, the
-    Model Registry has its own HTTP-based API.
-
-    When discovery mode is AUTO, the health check will attempt to discover
-    the Model Registry service from the cluster and update the config URL.
+    Provides MCP tools to run prompt evaluation and optimization via an
+    external Opik-backed service (e.g. NeuralNav backend). Set
+    RHOAI_MCP_OPIK_SERVICE_URL to the service base URL.
     """
 
     def __init__(self) -> None:
         super().__init__(
             PluginMetadata(
-                name="model_registry",
+                name="prompt_optimization",
                 version="0.1.0",
-                description="Model Registry integration",
+                description="Prompt evaluation and optimization using Opik",
                 maintainer="rhoai-mcp@redhat.com",
-                requires_crds=[],  # Uses REST API, not CRDs
+                requires_crds=[],
             )
         )
 
     @hookimpl
     def rhoai_register_tools(self, mcp: FastMCP, server: RHOAIServer) -> None:
-        from rhoai_mcp.domains.model_registry.tools import register_tools
+        from rhoai_mcp.domains.prompt_optimization.tools import register_tools
 
         register_tools(mcp, server)
 
     @hookimpl
-    def rhoai_health_check(self, server: RHOAIServer) -> tuple[bool, str]:
-        import logging
+    def rhoai_health_check(self, server: RHOAIServer) -> tuple[bool, str]:  # noqa: ARG002
+        url = getattr(server.config, "opik_service_url", None)
+        if url:
+            return True, "Prompt optimization service URL configured"
+        return True, "Prompt optimization tools available (set RHOAI_MCP_OPIK_SERVICE_URL to use)"
 
-        from rhoai_mcp.config import ModelRegistryAuthMode, ModelRegistryDiscoveryMode
 
-        logger = logging.getLogger(__name__)
+class NeuralNavPlugin(BasePlugin):
+    """Plugin for NeuralNav deployment recommendation (model + GPU + agent + system prompt).
 
-        if not server.config.model_registry_enabled:
-            return False, "Model Registry is disabled"
+    Provides get_deployment_recommendation to fetch ranked recommendations from the
+    NeuralNav backend. Uses the same RHOAI_MCP_OPIK_SERVICE_URL as prompt_optimization
+    (NeuralNav backend exposes both /api/ranked-recommend-from-spec and evaluate/optimize).
+    """
 
-        # Run discovery if AUTO mode
-        if server.config.model_registry_discovery_mode == ModelRegistryDiscoveryMode.AUTO:
-            from rhoai_mcp.domains.model_registry.discovery import ModelRegistryDiscovery
-
-            discovery = ModelRegistryDiscovery(server.k8s)
-            result = discovery.discover(fallback_url=server.config.model_registry_url)
-
-            if result:
-                # Update the config with the discovered URL
-                # Note: We update the private field since model_registry_url is a pydantic field
-                object.__setattr__(server.config, "model_registry_url", result.url)
-
-                # Auto-enable OAuth when using external Route with auth requirements
-                if (
-                    result.is_external
-                    and result.requires_auth
-                    and server.config.model_registry_auth_mode == ModelRegistryAuthMode.NONE
-                ):
-                    object.__setattr__(
-                        server.config, "model_registry_auth_mode", ModelRegistryAuthMode.OAUTH
-                    )
-                    logger.info(
-                        "Auto-enabled OAuth authentication for external Model Registry Route"
-                    )
-
-                logger.info(f"Model Registry discovered: {result}")
-                return True, f"Model Registry discovered at {result.url} (via {result.source})"
-
-            # Discovery failed - check if we have a fallback URL
-            if server.config.model_registry_url:
-                return (
-                    True,
-                    f"Model Registry at {server.config.model_registry_url} "
-                    f"(discovery failed, using configured URL)",
-                )
-            return (
-                False,
-                "Model Registry discovery failed and no model_registry_url configured",
+    def __init__(self) -> None:
+        super().__init__(
+            PluginMetadata(
+                name="neuralnav",
+                version="0.1.0",
+                description="Deployment recommendation (model + GPU + agent + system prompt) via NeuralNav",
+                maintainer="rhoai-mcp@redhat.com",
+                requires_crds=[],
             )
+        )
 
-        # Manual mode - just use configured URL
-        return True, f"Model Registry at {server.config.model_registry_url}"
+    @hookimpl
+    def rhoai_register_tools(self, mcp: FastMCP, server: RHOAIServer) -> None:
+        from rhoai_mcp.domains.neuralnav.tools import register_tools
+
+        register_tools(mcp, server)
+
+    @hookimpl
+    def rhoai_health_check(self, server: RHOAIServer) -> tuple[bool, str]:  # noqa: ARG002
+        url = getattr(server.config, "opik_service_url", None)
+        if url:
+            return True, "NeuralNav service URL configured"
+        return True, "NeuralNav tools available (set RHOAI_MCP_OPIK_SERVICE_URL to use)"
 
 
 def get_core_plugins() -> list[BasePlugin]:
     """Return all core domain plugin instances.
-
-    Note: Composite plugins (cluster, training composites, meta) are
-    registered separately via rhoai_mcp.composites.registry.
 
     Returns:
         List of plugin instances for all core domains.
@@ -341,6 +320,7 @@ def get_core_plugins() -> list[BasePlugin]:
         ConnectionsPlugin(),
         StoragePlugin(),
         TrainingPlugin(),
-        PromptsPlugin(),
-        ModelRegistryPlugin(),
+        SummaryPlugin(),
+        PromptOptimizationPlugin(),
+        NeuralNavPlugin(),
     ]

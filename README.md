@@ -17,8 +17,8 @@ An MCP (Model Context Protocol) server that enables AI agents to interact with R
 - **Data Connections**: Manage S3 credentials for data access
 - **Pipelines**: Configure Data Science Pipelines infrastructure
 - **Storage**: Create and manage persistent volume claims
-- **Training**: Fine-tune models with Kubeflow Training Operator
-- **MCP Prompts**: Workflow guidance for multi-step operations (18 prompts)
+- **NeuralNav Integration**: Get deployment recommendations (model + GPU + agent + system prompt) via `get_deployment_recommendation`; requires NeuralNav backend URL
+- **Prompt Optimization (Opik)**: Run prompt evaluation and optimization via `run_prompt_evaluation` and `run_prompt_optimization` (same NeuralNav backend); requires `RHOAI_MCP_OPIK_SERVICE_URL`
 
 ## Technology Stack
 
@@ -159,6 +159,17 @@ export RHOAI_MCP_TRANSPORT=sse
 export RHOAI_MCP_HOST=127.0.0.1
 export RHOAI_MCP_PORT=8000
 ```
+
+### Prompt Optimization (Opik)
+
+To use `run_prompt_evaluation` and `run_prompt_optimization`, set the base URL of an Opik-backed service (e.g. NeuralNav backend):
+
+```bash
+# Base URL of service exposing /api/evaluate-prompt and /api/optimize-prompt
+export RHOAI_MCP_OPIK_SERVICE_URL=http://localhost:8000
+```
+
+If unset, the tools return a clear error asking you to set `RHOAI_MCP_OPIK_SERVICE_URL`.
 
 ### Safety Settings
 
@@ -427,6 +438,23 @@ Note: The container uses `stdio` transport by default, which is required for Cla
 | `create_storage` | Create PVC |
 | `delete_storage` | Delete PVC (requires confirmation) |
 
+### NeuralNav (1 tool)
+
+Deployment recommendation (model + GPU + agent + system prompt). Requires `RHOAI_MCP_OPIK_SERVICE_URL` set to the NeuralNav backend base URL (e.g. `http://backend.neuralnav.svc.cluster.local:8000` in-cluster).
+
+| Tool | Description |
+|------|-------------|
+| `get_deployment_recommendation` | Get ranked recommendations (balanced, best_accuracy, lowest_cost, lowest_latency, simplest) plus `recommended_agent` and `recommended_system_prompt` for the use case. |
+
+### Prompt Optimization (Opik) (2 tools)
+
+Same URL as NeuralNav; calls `/api/evaluate-prompt` and `/api/optimize-prompt`.
+
+| Tool | Description |
+|------|-------------|
+| `run_prompt_evaluation` | Evaluate a system prompt on a Q&A dataset; returns metrics (e.g. overall_accuracy). |
+| `run_prompt_optimization` | Optimize a system prompt using Opik MetaPrompt (tone, length, audience); returns optimized_prompt and best_score. |
+
 ## MCP Resources
 
 The server also exposes read-only resources:
@@ -439,53 +467,6 @@ The server also exposes read-only resources:
 | `rhoai://projects/{name}/status` | Project resource summary |
 | `rhoai://projects/{name}/workbenches` | Workbench list with status |
 | `rhoai://projects/{name}/models` | Deployed models with status |
-
-## MCP Prompts
-
-The server provides 18 prompts that guide AI agents through multi-step workflows. Prompts are templates that provide step-by-step instructions and reference the appropriate tools for each workflow stage.
-
-### Training Workflow (3 prompts)
-
-| Prompt | Description |
-|--------|-------------|
-| `train-model` | Guide through fine-tuning a model with LoRA/QLoRA |
-| `monitor-training` | Monitor an active training job and diagnose issues |
-| `resume-training` | Resume a suspended or failed training job from checkpoint |
-
-### Cluster Exploration (4 prompts)
-
-| Prompt | Description |
-|--------|-------------|
-| `explore-cluster` | Discover what's available in the RHOAI cluster |
-| `explore-project` | Explore resources within a specific Data Science Project |
-| `find-gpus` | Find available GPU resources for training or inference |
-| `whats-running` | Quick status check of all active workloads |
-
-### Troubleshooting (4 prompts)
-
-| Prompt | Description |
-|--------|-------------|
-| `troubleshoot-training` | Diagnose and fix issues with a training job |
-| `troubleshoot-workbench` | Diagnose and fix issues with a workbench |
-| `troubleshoot-model` | Diagnose and fix issues with a deployed model |
-| `analyze-oom` | Analyze and resolve Out-of-Memory issues in training |
-
-### Project Setup (3 prompts)
-
-| Prompt | Description |
-|--------|-------------|
-| `setup-training-project` | Set up a new project for model training |
-| `setup-inference-project` | Set up a new project for model serving |
-| `add-data-connection` | Add an S3 data connection to an existing project |
-
-### Model Deployment (4 prompts)
-
-| Prompt | Description |
-|--------|-------------|
-| `deploy-model` | Deploy a model for inference serving |
-| `deploy-llm` | Deploy a Large Language Model with vLLM or TGIS |
-| `test-endpoint` | Test a deployed model endpoint |
-| `scale-model` | Scale a model deployment up or down |
 
 ## Example Interactions
 
@@ -566,21 +547,20 @@ uv run mypy src/rhoai_mcp
 ├─────────────────────────────────────────────────────────────────┤
 │  FastMCP Server (server.py)                                     │
 │  - Tool registration     - Resource registration                │
-│  - Prompt registration   - Lifecycle management                 │
-├───────────────────┬─────────────────────┬───────────────────────┤
-│  Tools Layer      │  Resources Layer    │  Prompts Layer        │
-│  - projects       │  - cluster.py       │  - training (3)       │
-│  - notebooks      │  - projects.py      │  - exploration (4)    │
-│  - inference      │                     │  - troubleshooting (4)│
-│  - connections    │                     │  - project setup (3)  │
-│  - storage        │                     │  - deployment (4)     │
-│  - pipelines      │                     │                       │
-│  - training       │                     │                       │
-├───────────────────┴─────────────────────┴───────────────────────┤
+│  - Lifecycle management  - Request routing                      │
+├────────────────────────────────┬────────────────────────────────┤
+│  Tools Layer (tools/)          │  Resources Layer (resources/)  │
+│  - projects.py (6 tools)       │  - cluster.py                  │
+│  - notebooks.py (8 tools)      │  - projects.py                 │
+│  - inference.py (6 tools)      │                                │
+│  - connections.py (4 tools)    │                                │
+│  - storage.py (3 tools)        │                                │
+│  - pipelines.py (3 tools)      │                                │
+├────────────────────────────────┴────────────────────────────────┤
 │  Clients Layer (clients/) - Business Logic                      │
 │  - base.py (K8sClient)   - projects.py    - notebooks.py        │
 │  - inference.py          - connections.py - storage.py          │
-│  - pipelines.py          - training.py                          │
+│  - pipelines.py                                                 │
 ├─────────────────────────────────────────────────────────────────┤
 │  Models Layer (models/) - Pydantic Data Structures              │
 │  - common.py (shared)    - Domain-specific models per resource  │
@@ -588,7 +568,7 @@ uv run mypy src/rhoai_mcp
 │  Infrastructure Layer                                           │
 │  - K8sClient: Kubernetes API abstraction (Core + CRDs)          │
 │  - Configuration: Environment-based settings                    │
-│  - Plugin Manager: Pluggy-based plugin system                   │
+│  - Utilities: errors.py, annotations.py, labels.py              │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
