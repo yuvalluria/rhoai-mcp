@@ -18,7 +18,7 @@ An MCP (Model Context Protocol) server that enables AI agents to interact with R
 - **Storage**: Create and manage persistent volume claims
 - **Training**: Fine-tune models with Kubeflow Training Operator
 - **MCP Prompts**: Workflow guidance for multi-step operations (18 prompts)
-- **NeuralNav Integration**: Two tool branches (set `RHOAI_MCP_TOOL_BRANCH`). **deployment_only** (default): only `get_deployment_recommendation`. **agent_prompt**: `run_prompt_evaluation`, `run_prompt_optimization`, and `get_agent_recommendation`. Requires NeuralNav backend URL (`RHOAI_MCP_OPIK_SERVICE_URL`).
+
 
 ## Technology Stack
 
@@ -34,83 +34,12 @@ An MCP (Model Context Protocol) server that enables AI agents to interact with R
 
 ## Installation
 
-### Quick start: Claude Code + NeuralNav only (no cluster)
-
-Use one of the two branches depending on which tools you need.
-
-**Option A — Deployment-only (1 tool): use branch `single-tool-flow`**
-
-1. Clone and checkout the single-tool-flow branch:
-   ```bash
-   git clone https://github.com/yuvalluria/rhoai-mcp.git
-   cd rhoai-mcp
-   git checkout single-tool-flow
-   uv sync
-   ```
-
-2. Start the NeuralNav backend (in another terminal):
-   ```bash
-   # From the NeuralNav/compass-official repo:
-   cd backend && uv run uvicorn src.api.routes:app --host 127.0.0.1 --port 8000
-   ```
-
-3. Configure Cursor/Claude Code (e.g. `.cursor/mcp.json`) with **only** the backend URL (optionally `RHOAI_MCP_TOOL_BRANCH=deployment_only`; it’s the default):
-   ```json
-   {
-     "mcpServers": {
-       "rhoai": {
-         "command": "uv",
-         "args": ["run", "--directory", "/path/to/rhoai-mcp", "rhoai-mcp"],
-         "env": {
-           "RHOAI_MCP_OPIK_SERVICE_URL": "http://localhost:8000",
-           "RHOAI_MCP_SKIP_K8S_CONNECT": "true"
-         }
-       }
-     }
-   }
-   ```
-
-4. Restart MCP, then in chat try e.g. **"Get deployment recommendation for a customer support chatbot, 500 users."**
-
-**Option B — Agent + prompt (3 tools): use branch `agent-prompt-optimization`**
-
-1. Clone and checkout the agent-prompt-optimization branch:
-   ```bash
-   git clone https://github.com/yuvalluria/rhoai-mcp.git
-   cd rhoai-mcp
-   git checkout agent-prompt-optimization
-   uv sync
-   ```
-
-2. Start the NeuralNav backend (same as above).
-
-3. Configure Cursor/Claude Code with **`RHOAI_MCP_TOOL_BRANCH=agent_prompt`** and the same URL:
-   ```json
-   {
-     "mcpServers": {
-       "rhoai": {
-         "command": "uv",
-         "args": ["run", "--directory", "/path/to/rhoai-mcp", "rhoai-mcp"],
-         "env": {
-           "RHOAI_MCP_OPIK_SERVICE_URL": "http://localhost:8000",
-           "RHOAI_MCP_TOOL_BRANCH": "agent_prompt",
-           "RHOAI_MCP_SKIP_K8S_CONNECT": "true"
-         }
-       }
-     }
-   }
-   ```
-
-4. Restart MCP, then in chat try e.g. **"Get agent recommendation for chatbot_conversational"** or **"Evaluate this prompt: You are a helpful assistant."**
-
-Use the real path to your `rhoai-mcp` clone. `RHOAI_MCP_SKIP_K8S_CONNECT=true` lets the server start without kubeconfig; RHOAI cluster tools will return an error until you configure Kubernetes.
 
 ### Using uv (recommended)
 
 ```bash
 # Clone the repository
-git clone https://github.com/yuvalluria/rhoai-mcp.git
-cd rhoai-mcp
+
 
 # Install dependencies
 uv sync
@@ -231,45 +160,7 @@ export RHOAI_MCP_HOST=127.0.0.1
 export RHOAI_MCP_PORT=8000
 ```
 
-### NeuralNav / tool branch
-
-Set `RHOAI_MCP_OPIK_SERVICE_URL` to the NeuralNav backend base URL. Set `RHOAI_MCP_TOOL_BRANCH` to choose which tools are exposed:
-
-- **deployment_only** (default): only `get_deployment_recommendation`. Use with branch **single-tool-flow**. If the URL is unset, the tool returns a clear error.
-- **agent_prompt**: `run_prompt_evaluation`, `run_prompt_optimization`, and `get_agent_recommendation`. Use with branch **agent-prompt-optimization** and set `RHOAI_MCP_TOOL_BRANCH=agent_prompt`. Same URL; if unset, those tools return a clear error.
-
-### Opik observability (optional)
-
-When `RHOAI_MCP_OPIK_TRACE_API_KEY` is set, successful tool calls are sent as traces to Opik (fire-and-forget in a background thread). Which tools are traced depends on the tool branch (deployment_only vs agent_prompt). You can view tool name, input/output, and timing in your Opik project.
-
-**How it helps and what you see in Opik**
-
-| What you see | Why it helps |
-|--------------|---------------|
-| **Trace name** (e.g. `get_deployment_recommendation`) | Know which MCP tools are used from Claude Code and how often. |
-| **Input** (truncated args: use_case, user_count, etc.) | Debug and audit: what the agent asked for. |
-| **Output** (truncated result) | Inspect recommendations, scores, errors without re-running. |
-| **Start/end time** | Rough timing per tool call; combine with Opik dashboards for trends. |
-| **Project** (e.g. `rhoai-mcp`) | Separate traces by project; filter by tool in Opik UI. |
-
-Together this gives you **observability** of MCP usage (which tools ran, with what inputs and outputs), **debugging** when something goes wrong, and a **history** you can analyze in Opik (e.g. OpikAssist, dashboards, or future cost/latency views). No change to tool behavior or latency; traces are sent in a background thread.
-
-**Using it when testing MCP from Claude Code (no UI):**
-
-1. Get an Opik API key from [Comet](https://www.comet.com) (Opik section).
-2. In your MCP server config (e.g. Cursor: `.cursor/mcp.json` or global MCP settings), add the env vars for the `rhoai` server:
-   ```json
-   "env": {
-     "RHOAI_MCP_OPIK_SERVICE_URL": "http://localhost:8000",
-     "RHOAI_MCP_OPIK_TRACE_API_KEY": "your_opik_api_key"
-   }
-   ```
-   Optionally set `RHOAI_MCP_OPIK_TRACE_API_URL` (default `https://www.comet.com/opik/api`) and `RHOAI_MCP_OPIK_TRACE_PROJECT` (default `rhoai-mcp`).
-3. Restart the MCP server, then from chat run the tool (e.g. “Get deployment recommendation for a support chatbot, 100 users”). On success, a trace is sent in the background.
-4. In Opik (Comet), open the project (default name `rhoai-mcp`) to see the traces.
-
-If the API key or URL is unset, no traces are sent. No Opik SDK dependency; the server uses the Opik REST API (`POST /v1/private/traces/batch`). Auth failures (401/403) are logged so you can fix the key or URL.
-
+#
 ### Safety Settings
 
 ```bash
