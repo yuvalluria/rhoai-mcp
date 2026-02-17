@@ -93,10 +93,13 @@ class RHOAIServer:
             """Manage server lifecycle - connect K8s on startup, disconnect on shutdown."""
             logger.info("Starting RHOAI MCP server...")
 
-            # Connect to Kubernetes
-            server_self._k8s_client = K8sClient(server_self._config)
-            try:
+            # Connect to Kubernetes (skip if RHOAI_MCP_SKIP_K8S_CONNECT for NeuralNav-only)
+            if server_self._config.skip_k8s_connect:
+                server_self._k8s_client = None
+            else:
+                server_self._k8s_client = K8sClient(server_self._config)
                 server_self._k8s_client.connect()
+            try:
 
                 # Run health checks on all plugins
                 if server_self._plugin_manager:

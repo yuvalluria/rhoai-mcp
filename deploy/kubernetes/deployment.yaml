@@ -134,9 +134,6 @@ subjects:
 # =============================================================================
 # ConfigMap for configuration
 # =============================================================================
-# Set RHOAI_MCP_OPIK_SERVICE_URL to your NeuralNav backend URL so in-cluster
-# tool (get_deployment_recommendation) works. Override via env or
-# a Secret if you use different backends per environment.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -153,8 +150,6 @@ data:
   RHOAI_MCP_LOG_LEVEL: "INFO"
   RHOAI_MCP_READ_ONLY_MODE: "false"
   RHOAI_MCP_ENABLE_DANGEROUS_OPERATIONS: "false"
-  # NeuralNav backend (in-cluster). Adjust namespace/service if your backend lives elsewhere.
-  RHOAI_MCP_OPIK_SERVICE_URL: "http://backend.neuralnav.svc.cluster.local:8000"
 
 ---
 # =============================================================================

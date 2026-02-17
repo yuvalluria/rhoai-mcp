@@ -12,6 +12,22 @@ from rhoai_mcp.config import (
     RHOAIConfig,
     TransportMode,
 )
+from rhoai_mcp.utils.errors import AuthenticationError
+
+
+def _has_auth_error(exc: BaseException) -> bool:
+    """Check if an exception is or contains an AuthenticationError.
+
+    Handles both direct AuthenticationError and ExceptionGroup wrappers
+    (from anyio task groups) on Python 3.10+.
+    """
+    if isinstance(exc, AuthenticationError):
+        return True
+    # ExceptionGroup (Python 3.11+) or exceptiongroup backport
+    inner: tuple[BaseException, ...] = getattr(exc, "exceptions", ())
+    if inner:
+        return any(_has_auth_error(e) for e in inner)
+    return False
 
 
 def setup_logging(level: LogLevel) -> None:
@@ -170,15 +186,22 @@ def main() -> int:
     os.environ.setdefault("UVICORN_HOST", config.host)
     os.environ.setdefault("UVICORN_PORT", str(config.port))
 
-    if config.transport == TransportMode.STDIO:
-        logger.info("Running with stdio transport")
-        mcp.run(transport="stdio")
-    elif config.transport == TransportMode.SSE:
-        logger.info(f"Running with SSE transport on {config.host}:{config.port}")
-        mcp.run(transport="sse")
-    elif config.transport == TransportMode.STREAMABLE_HTTP:
-        logger.info(f"Running with streamable-http transport on {config.host}:{config.port}")
-        mcp.run(transport="streamable-http")
+    transport_name: str = config.transport.value
+    if config.transport != TransportMode.STDIO:
+        logger.info(f"Running with {transport_name} transport on {config.host}:{config.port}")
+    else:
+        logger.info(f"Running with {transport_name} transport")
+
+    try:
+        mcp.run(transport=transport_name)  # type: ignore[arg-type]
+    except BaseException as exc:  # BaseException to catch anyio's BaseExceptionGroup
+        if _has_auth_error(exc):
+            logger.error(
+                "Kubernetes authentication failed. Your credentials may be expired. "
+                "Try re-authenticating with: oc login / kubectl config set-credentials"
+            )
+            return 1
+        raise
 
     return 0
 

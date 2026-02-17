@@ -1,4 +1,5 @@
 # RHOAI MCP Server
+
 [![CI](https://github.com/opendatahub-io/rhoai-mcp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/opendatahub-io/rhoai-mcp/actions/workflows/ci.yml)
 [![Container Build](https://github.com/opendatahub-io/rhoai-mcp/actions/workflows/container-build.yml/badge.svg)](https://github.com/opendatahub-io/rhoai-mcp/actions/workflows/container-build.yml)
 [![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](https://github.com/opendatahub-io/rhoai-mcp)
@@ -19,7 +20,6 @@ An MCP (Model Context Protocol) server that enables AI agents to interact with R
 - **Training**: Fine-tune models with Kubeflow Training Operator
 - **MCP Prompts**: Workflow guidance for multi-step operations (18 prompts)
 
-
 ## Technology Stack
 
 | Component | Technology | Purpose |
@@ -34,12 +34,12 @@ An MCP (Model Context Protocol) server that enables AI agents to interact with R
 
 ## Installation
 
-
 ### Using uv (recommended)
 
 ```bash
 # Clone the repository
-
+git clone https://github.com/admiller/rhoai-mcp-prototype.git
+cd rhoai-mcp-prototype
 
 # Install dependencies
 uv sync
@@ -160,7 +160,6 @@ export RHOAI_MCP_HOST=127.0.0.1
 export RHOAI_MCP_PORT=8000
 ```
 
-#
 ### Safety Settings
 
 ```bash
@@ -428,23 +427,14 @@ Note: The container uses `stdio` transport by default, which is required for Cla
 | `create_storage` | Create PVC |
 | `delete_storage` | Delete PVC (requires confirmation) |
 
-### NeuralNav / Opik tools (branch-dependent)
-
-Requires `RHOAI_MCP_OPIK_SERVICE_URL` set to the NeuralNav backend base URL (e.g. `http://localhost:8000` locally or `http://backend.neuralnav.svc.cluster.local:8000` in-cluster). Set `RHOAI_MCP_TOOL_BRANCH` to control which tools are exposed.
-
-**Branch `deployment_only` (default)** — 1 tool:
+### NeuralNav/Opik (requires RHOAI_MCP_OPIK_SERVICE_URL)
 
 | Tool | Description |
 |------|-------------|
-| `get_deployment_recommendation` | Get ranked recommendations (balanced, best_accuracy, lowest_cost, lowest_latency, simplest) plus `recommended_agent`, `agent_type`, `tools_needed`, and `recommended_system_prompt` for the use case. |
-
-**Branch `agent_prompt`** — 3 tools (prompt evaluation, prompt optimization, agent recommendation):
-
-| Tool | Description |
-|------|-------------|
-| `run_prompt_evaluation` | Evaluate a system prompt on a Q&A dataset; returns metrics (e.g. accuracy score). |
-| `run_prompt_optimization` | Optimize a system prompt using the NeuralNav/Opik backend; optional Q&A bias. |
-| `get_agent_recommendation` | Get agent name, single vs multi-agent, tools needed, and recommended system prompt for a use case (e.g. chatbot_conversational, code_completion) without running a full deployment recommendation. |
+| `run_prompt_evaluation` | Evaluate a prompt on a Q&A dataset; returns accuracy metrics |
+| `run_prompt_optimization` | Optimize a prompt via NeuralNav backend |
+| `get_deployment_recommendation` | Get ranked model+GPU+agent recommendations |
+| `get_agent_recommendation` | Get agent type, tools, and system prompt for a use case |
 
 ## MCP Resources
 
@@ -588,7 +578,7 @@ uv run mypy src/rhoai_mcp
 │  - Prompt registration   - Lifecycle management                 │
 ├───────────────────┬─────────────────────┬───────────────────────┤
 │  Tools Layer      │  Resources Layer    │  Prompts Layer        │
-│  - projects       │  - cluster.py       │  - training (3)        │
+│  - projects       │  - cluster.py       │  - training (3)       │
 │  - notebooks      │  - projects.py      │  - exploration (4)    │
 │  - inference      │                     │  - troubleshooting (4)│
 │  - connections    │                     │  - project setup (3)  │

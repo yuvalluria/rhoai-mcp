@@ -68,14 +68,7 @@ def register_tools(mcp: FastMCP, server: "RHOAIServer") -> None:
             with httpx.Client(timeout=120) as client:
                 r = client.post(f"{base}/api/evaluate-prompt", json=payload)
             r.raise_for_status()
-            result = r.json()
-            if "error" not in result:
-                try:
-                    from rhoai_mcp.utils.opik_tracer import send_mcp_tool_trace
-                    send_mcp_tool_trace("run_prompt_evaluation", payload, result)
-                except Exception:  # noqa: S110
-                    pass
-            return result
+            return r.json()
         except httpx.HTTPStatusError as e:
             logger.warning("Prompt evaluation HTTP error: %s %s", e.response.status_code, e.response.text[:200])
             try:
@@ -142,14 +135,7 @@ def register_tools(mcp: FastMCP, server: "RHOAIServer") -> None:
             with httpx.Client(timeout=300) as client:
                 r = client.post(f"{base}/api/optimize-prompt", json=payload)
             r.raise_for_status()
-            result = r.json()
-            if "error" not in result:
-                try:
-                    from rhoai_mcp.utils.opik_tracer import send_mcp_tool_trace
-                    send_mcp_tool_trace("run_prompt_optimization", payload, result)
-                except Exception:  # noqa: S110
-                    pass
-            return result
+            return r.json()
         except httpx.HTTPStatusError as e:
             logger.warning("Prompt optimization HTTP error: %s %s", e.response.status_code, e.response.text[:200])
             try:

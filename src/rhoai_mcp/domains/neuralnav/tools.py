@@ -105,14 +105,7 @@ def register_tools(
                 with httpx.Client(timeout=60) as client:
                     r = client.post(f"{base}/api/ranked-recommend-from-spec", json=payload)
                 r.raise_for_status()
-                result = r.json()
-                if "error" not in result:
-                    try:
-                        from rhoai_mcp.utils.opik_tracer import send_mcp_tool_trace
-                        send_mcp_tool_trace("get_deployment_recommendation", payload, result)
-                    except Exception:  # noqa: S110
-                        pass
-                return result
+                return r.json()
             except httpx.HTTPStatusError as e:
                 logger.warning("Deployment recommendation HTTP error: %s %s", e.response.status_code, e.response.text[:200])
                 try:
@@ -152,14 +145,7 @@ def register_tools(
                 with httpx.Client(timeout=30) as client:
                     r = client.get(f"{base}/api/agent-recommendation", params={"use_case": use_case})
                 r.raise_for_status()
-                result = r.json()
-                if "error" not in result:
-                    try:
-                        from rhoai_mcp.utils.opik_tracer import send_mcp_tool_trace
-                        send_mcp_tool_trace("get_agent_recommendation", {"use_case": use_case}, result)
-                    except Exception:  # noqa: S110
-                        pass
-                return result
+                return r.json()
             except httpx.HTTPStatusError as e:
                 logger.warning("Agent recommendation HTTP error: %s %s", e.response.status_code, e.response.text[:200])
                 try:
