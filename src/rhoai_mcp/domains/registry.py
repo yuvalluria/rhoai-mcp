@@ -254,7 +254,7 @@ class PromptOptimizationPlugin(BasePlugin):
 
     @hookimpl
     def rhoai_health_check(self, server: RHOAIServer) -> tuple[bool, str]:  # noqa: ARG002
-        return True, "OK" if getattr(server.config, "opik_service_url", None) else "Set RHOAI_MCP_OPIK_SERVICE_URL"
+        return True, "OK" if getattr(server.config, "neuralnav_backend_url", None) else "Set RHOAI_MCP_NEURALNAV_BACKEND_URL"
 
 
 class NeuralNavPlugin(BasePlugin):
@@ -270,7 +270,7 @@ class NeuralNavPlugin(BasePlugin):
 
     @hookimpl
     def rhoai_health_check(self, server: RHOAIServer) -> tuple[bool, str]:  # noqa: ARG002
-        return True, "OK" if getattr(server.config, "opik_service_url", None) else "Set RHOAI_MCP_OPIK_SERVICE_URL"
+        return True, "OK" if getattr(server.config, "neuralnav_backend_url", None) else "Set RHOAI_MCP_NEURALNAV_BACKEND_URL"
 
 
 class ModelRegistryPlugin(BasePlugin):

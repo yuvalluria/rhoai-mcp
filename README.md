@@ -427,12 +427,13 @@ Note: The container uses `stdio` transport by default, which is required for Cla
 | `create_storage` | Create PVC |
 | `delete_storage` | Delete PVC (requires confirmation) |
 
-### NeuralNav/Opik (requires RHOAI_MCP_OPIK_SERVICE_URL)
+### NeuralNav (requires RHOAI_MCP_NEURALNAV_BACKEND_URL)
 
 | Tool | Description |
 |------|-------------|
 | `run_prompt_evaluation` | Evaluate a prompt on a Q&A dataset; returns accuracy metrics |
 | `run_prompt_optimization` | Optimize a prompt via NeuralNav backend |
+| `run_agent_optimization` | Optimize an agent's system prompt; tools passed through |
 | `get_deployment_recommendation` | Get ranked model+GPU+agent recommendations |
 | `get_agent_recommendation` | Get agent type, tools, and system prompt for a use case |
 

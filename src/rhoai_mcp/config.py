@@ -189,8 +189,8 @@ class RHOAIConfig(BaseSettings):
         description="Skip TLS certificate verification for Model Registry (not recommended for production)",
     )
 
-    # NeuralNav/Opik (prompt evaluation, optimization, deployment recommendation)
-    opik_service_url: str | None = Field(default=None, description="Backend URL (e.g. http://localhost:8000)")
+    # NeuralNav backend (prompt evaluation, optimization, deployment recommendation)
+    neuralnav_backend_url: str | None = Field(default=None, description="NeuralNav backend URL (e.g. http://localhost:8000)")
     skip_k8s_connect: bool = Field(default=False, description="Skip K8s connection for NeuralNav-only use")
 
     @field_validator("kubeconfig_path", mode="before")

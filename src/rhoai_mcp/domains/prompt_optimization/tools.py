@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 def _base_url(server: "RHOAIServer") -> str | None:
     """NeuralNav/Opik service base URL from config."""
-    url = getattr(server.config, "opik_service_url", None)
+    url = getattr(server.config, "neuralnav_backend_url", None)
     if url:
         return url.rstrip("/")
     return None
@@ -52,7 +52,7 @@ def register_tools(mcp: FastMCP, server: "RHOAIServer") -> None:
         if not base:
             return {
                 "error": "NeuralNav/Opik service URL not configured",
-                "hint": "Set RHOAI_MCP_OPIK_SERVICE_URL to the NeuralNav backend base URL (e.g. http://backend.neuralnav.svc.cluster.local:8000)",
+                "hint": "Set RHOAI_MCP_NEURALNAV_BACKEND_URL to the NeuralNav backend URL (e.g. http://backend.neuralnav.svc.cluster.local:8000)",
             }
         payload: dict[str, Any] = {
             "prompt_text": prompt_text,
@@ -115,7 +115,7 @@ def register_tools(mcp: FastMCP, server: "RHOAIServer") -> None:
         if not base:
             return {
                 "error": "NeuralNav/Opik service URL not configured",
-                "hint": "Set RHOAI_MCP_OPIK_SERVICE_URL to the NeuralNav backend base URL",
+                "hint": "Set RHOAI_MCP_NEURALNAV_BACKEND_URL to the NeuralNav backend URL",
             }
         payload: dict[str, Any] = {
             "prompt_text": prompt_text,

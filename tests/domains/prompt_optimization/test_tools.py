@@ -11,16 +11,16 @@ class TestPromptOptimizationTools:
 
     @pytest.fixture
     def mock_server(self) -> MagicMock:
-        """Server with opik_service_url set."""
+        """Server with neuralnav_backend_url set."""
         server = MagicMock()
-        server.config.opik_service_url = "http://127.0.0.1:8000"
+        server.config.neuralnav_backend_url = "http://127.0.0.1:8000"
         return server
 
     @pytest.fixture
     def mock_server_no_url(self) -> MagicMock:
-        """Server without opik_service_url (tools should return error)."""
+        """Server without neuralnav_backend_url (tools should return error)."""
         server = MagicMock()
-        server.config.opik_service_url = None
+        server.config.neuralnav_backend_url = None
         return server
 
     def _capture_tools(self, mcp: MagicMock) -> dict[str, Any]:
@@ -38,7 +38,7 @@ class TestPromptOptimizationTools:
     def test_run_prompt_evaluation_returns_error_when_url_not_configured(
         self, mock_server_no_url: MagicMock
     ) -> None:
-        """When RHOAI_MCP_OPIK_SERVICE_URL is not set, evaluation returns error."""
+        """When RHOAI_MCP_NEURALNAV_BACKEND_URL is not set, evaluation returns error."""
         from rhoai_mcp.domains.prompt_optimization.tools import register_tools
 
         mcp = MagicMock()
@@ -50,7 +50,7 @@ class TestPromptOptimizationTools:
             dataset_path="scripts/opik_optimization/test_dataset_small.json",
         )
         assert "error" in result
-        assert "not configured" in result["error"].lower() or "OPIK" in result.get("hint", "")
+        assert "not configured" in result["error"].lower() or "NEURALNAV" in result.get("hint", "")
 
     def test_run_prompt_evaluation_success(self, mock_server: MagicMock) -> None:
         """When backend is configured and returns 200, evaluation returns result."""
@@ -131,7 +131,7 @@ class TestPromptOptimizationTools:
     def test_run_prompt_optimization_returns_error_when_url_not_configured(
         self, mock_server_no_url: MagicMock
     ) -> None:
-        """When RHOAI_MCP_OPIK_SERVICE_URL is not set, optimization returns error."""
+        """When RHOAI_MCP_NEURALNAV_BACKEND_URL is not set, optimization returns error."""
         from rhoai_mcp.domains.prompt_optimization.tools import register_tools
 
         mcp = MagicMock()

@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 def _base_url(server: "RHOAIServer") -> str | None:
     """NeuralNav backend base URL from config (reuses Opik service URL)."""
-    url = getattr(server.config, "opik_service_url", None)
+    url = getattr(server.config, "neuralnav_backend_url", None)
     if url:
         return url.rstrip("/")
     return None
@@ -81,7 +81,7 @@ def register_tools(
             if not base:
                 return {
                     "error": "NeuralNav service URL not configured",
-                    "hint": "Set RHOAI_MCP_OPIK_SERVICE_URL to the NeuralNav backend base URL (e.g. http://backend.neuralnav.svc.cluster.local:8000)",
+                    "hint": "Set RHOAI_MCP_NEURALNAV_BACKEND_URL to the NeuralNav backend URL (e.g. http://backend.neuralnav.svc.cluster.local:8000)",
                 }
             payload: dict[str, Any] = {
                 "use_case": use_case,
@@ -139,7 +139,7 @@ def register_tools(
             if not base:
                 return {
                     "error": "NeuralNav service URL not configured",
-                    "hint": "Set RHOAI_MCP_OPIK_SERVICE_URL to the NeuralNav backend base URL",
+                    "hint": "Set RHOAI_MCP_NEURALNAV_BACKEND_URL to the NeuralNav backend URL",
                 }
             try:
                 with httpx.Client(timeout=30) as client:
