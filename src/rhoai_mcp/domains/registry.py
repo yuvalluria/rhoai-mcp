@@ -242,7 +242,7 @@ class PromptsPlugin(BasePlugin):
 
 
 class NeuralNavPlugin(BasePlugin):
-    """Deployment recommendation via NeuralNav backend (get_deployment_recommendation only)."""
+    """Deployment recommendation via NeuralNav backend (model + GPU only)."""
 
     def __init__(self) -> None:
         super().__init__(PluginMetadata(name="neuralnav", version="0.1.0", description="Deployment recommendation", maintainer="rhoai-mcp@redhat.com", requires_crds=[]))

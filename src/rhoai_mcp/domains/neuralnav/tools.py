@@ -1,4 +1,4 @@
-"""MCP tools for NeuralNav deployment recommendation (model + GPU + agent + system prompt)."""
+"""MCP tools for NeuralNav deployment recommendation (model + GPU only)."""
 
 from __future__ import annotations
 
@@ -38,10 +38,10 @@ def register_tools(mcp: FastMCP, server: "RHOAIServer") -> None:
         max_cost: float | None = None,
         include_near_miss: bool = True,
     ) -> dict[str, Any]:
-        """Get ranked deployment recommendations (model + GPU + agent + system prompt) from NeuralNav.
+        """Get ranked deployment recommendations (model + GPU only) from NeuralNav.
 
         Returns five ranked views: balanced, best_accuracy, lowest_cost, lowest_latency, simplest.
-        Includes recommended_agent and recommended_system_prompt for the use case.
+        Each config includes model name, GPU config, scores, and cost.
 
         Args:
             use_case: Use case key (e.g. chatbot_conversational, code_completion, translation).
@@ -59,8 +59,8 @@ def register_tools(mcp: FastMCP, server: "RHOAIServer") -> None:
             include_near_miss: Include configs that nearly meet SLOs (default True).
 
         Returns:
-            Dict with balanced, best_accuracy, lowest_cost, lowest_latency, simplest,
-            recommended_agent, recommended_system_prompt, specification, and stats.
+            Dict with balanced, best_accuracy, lowest_cost, lowest_latency, simplest
+            (lists of model+GPU configs), specification, and stats.
         """
         base = _base_url(server)
         if not base:
@@ -90,7 +90,11 @@ def register_tools(mcp: FastMCP, server: "RHOAIServer") -> None:
             with httpx.Client(timeout=60) as client:
                 r = client.post(f"{base}/api/ranked-recommend-from-spec", json=payload)
             r.raise_for_status()
-            return r.json()
+            data = r.json()
+            # Return only model + GPU; strip agent/prompt fields
+            for key in ("recommended_agent", "recommended_system_prompt", "prompt_eval_dataset_path", "recommended_agent_explanation"):
+                data.pop(key, None)
+            return data
         except httpx.HTTPStatusError as e:
             logger.warning("Deployment recommendation HTTP error: %s %s", e.response.status_code, e.response.text[:200])
             try:
