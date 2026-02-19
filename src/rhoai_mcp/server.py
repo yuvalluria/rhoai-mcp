@@ -93,10 +93,12 @@ class RHOAIServer:
             """Manage server lifecycle - connect K8s on startup, disconnect on shutdown."""
             logger.info("Starting RHOAI MCP server...")
 
-            # Connect to Kubernetes
-            server_self._k8s_client = K8sClient(server_self._config)
-            try:
+            if server_self._config.skip_k8s_connect:
+                server_self._k8s_client = None
+            else:
+                server_self._k8s_client = K8sClient(server_self._config)
                 server_self._k8s_client.connect()
+            try:
 
                 # Run health checks on all plugins
                 if server_self._plugin_manager:
@@ -119,7 +121,7 @@ class RHOAIServer:
                 except Exception as e:
                     logger.warning(f"Error closing port-forward connections: {e}")
 
-                if server_self._k8s_client:
+                if server_self._k8s_client is not None:
                     server_self._k8s_client.disconnect()
                 server_self._k8s_client = None
                 logger.info("RHOAI MCP server shut down")

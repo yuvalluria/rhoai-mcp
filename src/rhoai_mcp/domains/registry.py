@@ -241,6 +241,38 @@ class PromptsPlugin(BasePlugin):
         return True, "Prompts require no external dependencies"
 
 
+class NeuralNavPlugin(BasePlugin):
+    """Agent recommendation via NeuralNav backend (get_agent_recommendation only)."""
+
+    def __init__(self) -> None:
+        super().__init__(PluginMetadata(name="neuralnav", version="0.1.0", description="Agent recommendation", maintainer="rhoai-mcp@redhat.com", requires_crds=[]))
+
+    @hookimpl
+    def rhoai_register_tools(self, mcp: FastMCP, server: RHOAIServer) -> None:
+        from rhoai_mcp.domains.neuralnav.tools import register_tools
+        register_tools(mcp, server)
+
+    @hookimpl
+    def rhoai_health_check(self, server: RHOAIServer) -> tuple[bool, str]:  # noqa: ARG002
+        return True, "OK" if getattr(server.config, "neuralnav_backend_url", None) else "Set RHOAI_MCP_NEURALNAV_BACKEND_URL"
+
+
+class PromptOptimizationPlugin(BasePlugin):
+    """Prompt evaluation and optimization via NeuralNav backend."""
+
+    def __init__(self) -> None:
+        super().__init__(PluginMetadata(name="prompt_optimization", version="0.1.0", description="Prompt eval/optimize", maintainer="rhoai-mcp@redhat.com", requires_crds=[]))
+
+    @hookimpl
+    def rhoai_register_tools(self, mcp: FastMCP, server: RHOAIServer) -> None:
+        from rhoai_mcp.domains.prompt_optimization.tools import register_tools
+        register_tools(mcp, server)
+
+    @hookimpl
+    def rhoai_health_check(self, server: RHOAIServer) -> tuple[bool, str]:  # noqa: ARG002
+        return True, "OK" if getattr(server.config, "neuralnav_backend_url", None) else "Set RHOAI_MCP_NEURALNAV_BACKEND_URL"
+
+
 class ModelRegistryPlugin(BasePlugin):
     """Plugin for Model Registry integration.
 
@@ -342,5 +374,7 @@ def get_core_plugins() -> list[BasePlugin]:
         StoragePlugin(),
         TrainingPlugin(),
         PromptsPlugin(),
+        NeuralNavPlugin(),
+        PromptOptimizationPlugin(),
         ModelRegistryPlugin(),
     ]
